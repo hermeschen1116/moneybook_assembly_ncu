@@ -1,4 +1,4 @@
-# moneybook
+# moneybook-CLI
 > remember do ```git fetch``` before any operation 
 ## modules
 ### main program (interface)
