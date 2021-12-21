@@ -1,4 +1,5 @@
 # moneybook
+> remember do fetch before every operation 
 ## modules
 ### main program (interface)
 ### file related
