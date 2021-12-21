@@ -1,7 +1,7 @@
 # moneybook-CLI
 > remember do ```git fetch``` before any operation 
+## main program (interface)
 ## modules
-### main program (interface)
 ### file related
 #### read file
 #### write file
