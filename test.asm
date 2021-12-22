@@ -236,7 +236,8 @@ L:
 	call WriteDec
 	call Crlf
 	add ebx, TYPE data
-	loop L
+	dec ecx
+	jnz L
 	call WaitMsg
 	jmp START
 DONE:
