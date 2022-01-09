@@ -10,6 +10,7 @@ Item STRUCT
 	Day WORD ?
 	Expense DWORD ?
 	Category BYTE ?
+	IO BYTE ?
 Item ENDS
 
 .data
@@ -21,26 +22,30 @@ titleSize DWORD $-titleStr
 
 nextLine BYTE 0Dh, 0Ah
 nextLineSize DWORD $-nextLine
-firstLine BYTE "Date        Category       Item             Price",0Dh,0Ah
+firstLine BYTE "Date        Type    Category       Item             Price",0Dh,0Ah
 firstLineSize DWORD $-firstLine  
 
-errorMsg BYTE "Invalid Option!",0
+errorMsg BYTE "Invalid Operation!",0
 errorMsgSize DWORD $-errorMsg
 noDataMsg BYTE "There is no data in this day!",0
 noDataMsgSize DWORD $-noDataMsg
 noData BYTE "There is no data now! Please add datas by Add option!",0
 noDataSize DWORD $-noData
-optionStr BYTE "Please Choose Option:",0
+optionStr BYTE "Please Choose An Option:",0
 optionSize DWORD $-optionStr
 options BYTE "Options: (1)Add (2)Delete (3)Modify (4)Search (5)Statistics (6)Exit",0
 optionsSize DWORD $-options
+inoutCome BYTE "Type: (1)Income (2)Outcome",0
+inoutComeSize DWORD $-inoutCome
+inoutComeStr BYTE "Please Choose A Type:",0
+inoutComeStrSize DWORD $-inoutComeStr
 dateStr BYTE "Please Input Date:",0
 dateSize DWORD $-dateStr
 slash BYTE "/",0
 slashSize DWORD $-slash
 categoryStr BYTE "Please Choose Category:",0
 categorySize DWORD $-categoryStr
-categories BYTE "Category: (1)Food (2)Traffic (3)Entertainment (4)Shopping (5)Medical (6)Home (7)Learning",0
+categories BYTE "Category: (1)Food (2)Traffic (3)Entertainment (4)Shopping (5)Medical (6)Home (7)Learning (8)Salary",0
 categoriesSize DWORD $-categories
 itemStr BYTE "Please Input Item(MAX: 15 words):",0
 itemSize DWORD $-itemStr
@@ -50,10 +55,16 @@ curSizeStr BYTE "Current Items Quantity(MAX: 500 items):",0
 curSizeSize DWORD $-curSizeStr
 indexStr BYTE "Please Choose An Index:",0
 indexStrSize DWORD $-indexStr
-totalStr BYTE "Total Expense:",0
-totalStrSize DWORD $-totalStr
+inTotalStr BYTE "Total Income:",0
+inTotalStrSize DWORD $-inTotalStr
+outTotalStr BYTE "Total Outcome:",0
+outTotalStrSize DWORD $-outTotalStr
+balanceStr BYTE "Balance:",0
+balanceStrSize DWORD $-balanceStr
 itemsQ DWORD 0
-total DWORD 0
+InTotal DWORD 0
+OutTotal DWORD 0
+balance DWORD 0
 
 buffer BYTE 50 DUP(0)
 bufferSize DWORD ?
@@ -64,11 +75,13 @@ outputHandle DWORD ?
 fileHandle DWORD ?
 optHandle DWORD ?
 
+cnt DWORD 0
 count DWORD 0
 Index DWORD ?
 last DWORD ?
 sIndex DWORD ?
 list BYTE 500 DUP(?)
+negFlag BYTE 0
 
 bytesWritten DWORD ?
 xyPosition COORD <0,0>
@@ -142,6 +155,29 @@ OPT:
 	mov ebx, itemsQ
 	mov (Item PTR [data+eax]).Index, bx
 
+	;income or outcome
+IOC:
+	mov xyPosition.x, 0
+	add xyPosition.y, 2
+	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR inoutCome, inoutComeSize, xyPosition, ADDR bytesWritten
+	inc xyPosition.y
+	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR inoutComeStr, inoutComeStrSize, xyPosition, ADDR bytesWritten
+	add xyPosition.x, SIZEOF inoutComeStr
+	INVOKE SetConsoleCursorPosition, outputHandle, xyPosition
+	call ReadInt
+	.IF eax > 2
+		mov xyPosition.x, 0
+		add xyPosition.y, 2
+		INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR errorMsg, errorMsgSize, xyPosition, ADDR bytesWritten
+		jmp IOC
+	.ENDIF
+	.IF optHandle == 3
+		mov (Item PTR [temp]).IO, al
+		jmp CAT
+	.ENDIF
+	mov ebx, count
+	mov (Item PTR [data+ebx]).IO, al
+
 	;category
 CAT:
 	mov xyPosition.x, 0
@@ -151,8 +187,8 @@ CAT:
 	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR categoryStr, categorySize, xyPosition, ADDR bytesWritten
 	add xyPosition.x, SIZEOF categoryStr
 	INVOKE SetConsoleCursorPosition, outputHandle, xyPosition
-	call ReadDec
-	.IF eax > 7
+	call ReadInt
+	.IF eax > 8
 		mov xyPosition.x, 0
 		add xyPosition.y, 2
 		INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR errorMsg, errorMsgSize, xyPosition, ADDR bytesWritten
@@ -171,6 +207,7 @@ DAT:
 	add xyPosition.y, 2
 	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR dateStr, dateSize, xyPosition, ADDR bytesWritten
 	add xyPosition.X, SIZEOF dateStr
+	mov cnt, 0
 	mov ecx, 3
 D:
 	push ecx
@@ -178,13 +215,41 @@ D:
 	;mov edx, OFFSET buffer 
     ;mov ecx, (SIZEOF buffer) - 1
     ;call ReadString
-	call ReadDec
-	cmp eax, 100
+	call ReadInt
+	.IF eax > 80000000h
+		mov xyPosition.x, 0
+		add xyPosition.y, 2
+		INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR errorMsg, errorMsgSize, xyPosition, ADDR bytesWritten
+		jmp DAT
+	.ENDIF
+	.IF cnt == 1
+		.IF eax > 12
+			mov xyPosition.x, 0
+			add xyPosition.y, 2
+			INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR errorMsg, errorMsgSize, xyPosition, ADDR bytesWritten
+			jmp DAT
+		.ENDIF
+	.ENDIF
+	.IF cnt == 2
+		.IF eax > 31
+			mov xyPosition.x, 0
+			add xyPosition.y, 2
+			INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR errorMsg, errorMsgSize, xyPosition, ADDR bytesWritten
+			jmp DAT
+		.ENDIF
+	.ENDIF
+	cmp eax, 32
 	pop ecx
 	push eax
 	push ecx
 	jb NotYear
-    add xyPosition.x, 2
+	cmp eax, 1000
+	jb Chinese
+	inc xyPosition.x
+Chinese:
+	cmp eax, 100
+	jb NotYear
+	inc xyPosition.x
 NotYear:
 	add xyPosition.x, 2
 	pop ecx
@@ -194,8 +259,9 @@ NotYear:
 	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR slash, slashSize, xyPosition, ADDR bytesWritten
 	inc xyPosition.x
 D_STOP:
+	inc cnt
 	pop ecx
-	loop D
+	loop DFlag
 	.IF optHandle == 1
 		mov eax, count
 		pop ebx
@@ -204,6 +270,7 @@ D_STOP:
 		mov (Item PTR [data+eax]).Month, bx
 		pop ebx
 		mov (Item PTR [data+eax]).Year, bx
+		jmp CON
 	.ENDIF
 	.IF optHandle > 1
 		pop ebx
@@ -214,6 +281,8 @@ D_STOP:
 		mov (Item PTR [temp]).Year, bx
 		jmp search_item
 	.ENDIF
+DFlag:
+	jmp D
 
 	;item
 CON:
@@ -251,21 +320,33 @@ EXP:
 	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR priceStr, priceSize, xyPosition, ADDR bytesWritten
 	add xyPosition.x, SIZEOF priceStr
 	INVOKE SetConsoleCursorPosition, outputHandle, xyPosition
-	call ReadDec
-	.IF eax < 0
+	call ReadInt
+	.IF eax > 80000000h
 		mov xyPosition.x, 0
 		add xyPosition.y, 2
 		INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR errorMsg, errorMsgSize, xyPosition, ADDR bytesWritten
 		jmp EXP
 	.ENDIF
-	.IF optHandle == 1
-		mov ebx, count
+	mov ebx, count
+	mov dl, (Item PTR [data+ebx]).IO
+	.IF optHandle == 1 && dl == 1
 		mov (Item PTR [data+ebx]).Expense, eax
-		add total, eax
+		add InTotal, eax
+		add balance, eax
+	.ELSEIF optHandle == 1 && dl == 2
+		mov (Item PTR [data+ebx]).Expense, eax
+		add OutTotal, eax
+		sub balance, eax
 	.ENDIF
 	.IF optHandle == 3
 		mov (Item PTR [temp]).Expense, eax
-		add total, eax
+		.IF dl == 1
+			add InTotal, eax
+			add balance, eax
+		.ELSEIF dl == 2
+			add OutTotal, eax
+			sub balance, eax
+		.ENDIF
 		jmp mod_start
 	.ENDIF
 	;count++
@@ -315,8 +396,21 @@ del_again:
 	mov (Item PTR [data+ax]).Month, bx
 	mov bx, (Item PTR [data+edx]).Day
 	mov (Item PTR [data+ax]).Day, bx
-	mov ebx, (Item PTR [data+ax]).Expense
-	sub total, ebx
+	mov bl, (Item PTR [data+ax]).IO
+	push edx
+	.IF bl == 1
+		mov edx, (Item PTR [data+ax]).Expense
+		sub InTotal, edx
+		sub balance, edx
+	.ENDIF
+	.IF bl == 2
+		mov edx, (Item PTR [data+ax]).Expense
+		sub OutTotal, edx
+		add balance, edx
+	.ENDIF
+	pop edx
+	mov bl, (Item PTR [data+edx]).IO
+	mov (Item PTR [data+ax]).IO, bl
 	mov ebx, (Item PTR [data+edx]).Expense
 	mov (Item PTR [data+ax]).Expense, ebx
 	mov bl, (Item PTR [data+edx]).Category
@@ -353,7 +447,7 @@ mod_again:
 	xor ebx, ebx
 	mov bl, [list+eax]
 	mov Index, ebx
-	jmp CAT
+	jmp IOC
 mod_start:
 	dec Index
 	xor eax, eax
@@ -365,8 +459,19 @@ mod_start:
 	mov (Item PTR [data+ax]).Month, bx
 	mov bx, (Item PTR [temp]).Day
 	mov (Item PTR [data+ax]).Day, bx
-	mov ebx, (Item PTR [data+ax]).Expense
-	sub total, ebx
+	mov bl, (Item PTR [data+ax]).IO
+	.IF bl == 1
+		mov edx, (Item PTR [data+ax]).Expense
+		sub InTotal, edx
+		sub balance, edx
+	.ENDIF
+	.IF bl == 2
+		mov edx, (Item PTR [data+ax]).Expense
+		sub OutTotal, edx
+		add balance, edx
+	.ENDIF
+	mov bl, (Item PTR [temp]).IO
+	mov (Item PTR [data+ax]).IO, bl
 	mov ebx, (Item PTR [temp]).Expense
 	mov (Item PTR [data+ax]).Expense, ebx
 	mov bl, (Item PTR [temp]).Category
@@ -422,6 +527,34 @@ sLoop:
 	mov al, ' '
 	call WriteChar
 	push ecx
+	mov al, (Item PTR [data+ebx]).IO
+	.IF al == 1
+		mov bufferSize, 6
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET inoutCome
+		add esi, 9
+		mov edi, OFFSET buffer
+		rep movsb
+	.ENDIF
+	.IF al == 2
+		mov bufferSize, 7
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET inoutCome
+		add esi, 19
+		mov edi, OFFSET buffer
+		rep movsb
+	.ENDIF
+	mov edx, OFFSET buffer
+	call WriteString
+	mov ecx, 50
+	cld
+	mov esi, OFFSET reset
+	mov edi, OFFSET buffer
+	rep movsb
+	mov al, ' '
+	call WriteChar
 	mov al, (Item PTR [data+ebx]).Category
 	.IF al == 1
 		mov bufferSize, 4
@@ -471,12 +604,20 @@ sLoop:
 		add esi, 72
 		mov edi, OFFSET buffer
 		rep movsb
-	.ELSE
+	.ELSEIF al == 7
 		mov bufferSize, 8
 		mov ecx, bufferSize
 		cld
 		mov esi, OFFSET categories
 		add esi, 80
+		mov edi, OFFSET buffer
+		rep movsb
+	.ELSE
+		mov bufferSize, 6
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET categories
+		add esi, 92
 		mov edi, OFFSET buffer
 		rep movsb
 	.ENDIF
@@ -557,6 +698,34 @@ L:
 	mov al, ' '
 	call WriteChar
 	push ecx
+	mov al, (Item PTR [data+ebx]).IO
+	.IF al == 1
+		mov bufferSize, 6
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET inoutCome
+		add esi, 9
+		mov edi, OFFSET buffer
+		rep movsb
+	.ENDIF
+	.IF al == 2
+		mov bufferSize, 7
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET inoutCome
+		add esi, 19
+		mov edi, OFFSET buffer
+		rep movsb
+	.ENDIF
+	mov edx, OFFSET buffer
+	call WriteString
+	mov ecx, 50
+	cld
+	mov esi, OFFSET reset
+	mov edi, OFFSET buffer
+	rep movsb
+	mov al, ' '
+	call WriteChar
 	mov al, (Item PTR [data+ebx]).Category
 	.IF al == 1
 		mov bufferSize, 4
@@ -606,12 +775,20 @@ L:
 		add esi, 72
 		mov edi, OFFSET buffer
 		rep movsb
-	.ELSE
+	.ELSEIF al == 7
 		mov bufferSize, 8
 		mov ecx, bufferSize
 		cld
 		mov esi, OFFSET categories
 		add esi, 80
+		mov edi, OFFSET buffer
+		rep movsb
+	.ELSE
+		mov bufferSize, 6
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET categories
+		add esi, 92
 		mov edi, OFFSET buffer
 		rep movsb
 	.ENDIF
@@ -633,22 +810,35 @@ L:
 	call Crlf
 	add ebx, TYPE data
 	pop ecx
-	loop LF
+	dec ecx
+	jnz L
 	mov xyPosition.x, 0
 	mov eax, itemsQ
 	inc eax
 	add xyPosition.y, ax
-	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR totalStr, totalStrSize, xyPosition, ADDR bytesWritten
-	add xyPosition.x, SIZEOF totalStr
+	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR inTotalStr, inTotalStrSize, xyPosition, ADDR bytesWritten
+	add xyPosition.x, SIZEOF inTotalStr
 	INVOKE SetConsoleCursorPosition, outputHandle, xyPosition
-	mov eax, total
+	mov eax, InTotal
 	call WriteDec
+	mov xyPosition.x, 0
+	inc xyPosition.y
+	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR outTotalStr, outTotalStrSize, xyPosition, ADDR bytesWritten
+	add xyPosition.x, SIZEOF outTotalStr
+	INVOKE SetConsoleCursorPosition, outputHandle, xyPosition
+	mov eax, OutTotal
+	call WriteDec
+	mov xyPosition.x, 0
+	inc xyPosition.y
+	INVOKE WriteConsoleOutputCharacter, outputHandle, ADDR balanceStr, balanceStrSize, xyPosition, ADDR bytesWritten
+	add xyPosition.x, SIZEOF balanceStr
+	INVOKE SetConsoleCursorPosition, outputHandle, xyPosition
+	mov eax, balance
+	call WriteInt
 	call Crlf
 	call Crlf
 	call WaitMsg
 	jmp START
-LF:
-	jmp L
 
 	;output to a file
 DONE:
@@ -675,7 +865,19 @@ yLoop:
 	add edx, 30h
 	mov [buffer+ecx-1], dl
 	mov (Item PTR [data+ebx]).Year, ax
-	loop yLoop
+	.IF ax >= 10
+		loop yLoop
+	.ELSE
+		add al, 30h
+		mov [buffer+ecx-2], al
+		sub ecx, 2
+		cmp ecx, 1
+		jb yFlag
+remainder:
+		mov [buffer+ecx-1], " "
+		loop remainder
+	.ENDIF
+yFlag:
 	mov ecx, 2
 	mov al, slash
 	mov [buffer+7], al
@@ -701,6 +903,33 @@ dLoop:
 	mov [buffer+10], " "
 	mov [buffer+11], " "
 	INVOKE WriteFile, fileHandle, ADDR buffer, 12, ADDR bytesWritten, 0
+	;in/outcome
+	mov al, (Item PTR [data+ebx]).IO
+	.IF al == 1
+		mov bufferSize, 6
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET inoutCome
+		add esi, 9
+		mov edi, OFFSET buffer
+		rep movsb
+	.ENDIF
+	.IF al == 2
+		mov bufferSize, 7
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET inoutCome
+		add esi, 19
+		mov edi, OFFSET buffer
+		rep movsb
+	.ENDIF
+	mov eax, bufferSize
+	mov ecx, 8
+	sub ecx, bufferSize
+IOL:
+	mov [buffer+eax+ecx-1], " "
+	loop IOL
+	INVOKE WriteFile, fileHandle, ADDR buffer, 8, ADDR bytesWritten, 0
 	;category
 	mov al, (Item PTR [data+ebx]).Category
 	.IF al == 1
@@ -751,12 +980,20 @@ dLoop:
 		add esi, 72
 		mov edi, OFFSET buffer
 		rep movsb
-	.ELSE
+	.ELSEIF al == 7
 		mov bufferSize, 8
 		mov ecx, bufferSize
 		cld
 		mov esi, OFFSET categories
 		add esi, 80
+		mov edi, OFFSET buffer
+		rep movsb
+	.ELSE
+		mov bufferSize, 6
+		mov ecx, bufferSize
+		cld
+		mov esi, OFFSET categories
+		add esi, 92
 		mov edi, OFFSET buffer
 		rep movsb
 	.ENDIF
@@ -792,6 +1029,8 @@ pLoop:
 		mov [buffer+ecx-2], al
 		inc bufferSize
 		mov ecx, 1
+	.ELSEIF eax == 0
+		mov ecx, 1
 	.ELSE
 		mov (Item PTR [data+ebx]).Expense, eax
 	.ENDIF
@@ -810,13 +1049,19 @@ pLoop:
 	dec ecx
 	jnz toFile
 FINAL:
-	;total to ascii
+	;incomeTotal to ascii
 	mov ecx, 50
 	mov bufferSize, 0
-tLoop:
+inLoop:
 	xor edx, edx
 	xor eax, eax
-	mov eax, total
+	mov eax, InTotal
+	.IF eax == 0
+		add eax, 30h
+		mov [buffer+ecx-1], al
+		inc bufferSize
+		jmp inFlag
+	.ENDIF
 	div ten
 	add edx, 30h
 	mov [buffer+ecx-1], dl
@@ -825,13 +1070,14 @@ tLoop:
 		add al, 30h
 		mov [buffer+ecx-2], al
 		inc bufferSize
-		mov ecx, 1
+		jmp inFlag
 	.ELSE
-		mov total, eax
+		mov InTotal, eax
 	.ENDIF
-	loop tLoop
-	mov ecx, totalStrSize
-	mov esi, OFFSET totalStr
+	loop inLoop
+inFlag:
+	mov ecx, inTotalStrSize
+	mov esi, OFFSET inTotalStr
 	mov edi, OFFSET buffer
 	rep movsb
 	mov ecx, bufferSize
@@ -839,11 +1085,105 @@ tLoop:
 	sub eax, bufferSize
 	mov esi, OFFSET buffer
 	add esi, eax
-	mov eax, totalStrSize
+	mov eax, inTotalStrSize
 	mov edi, OFFSET buffer
 	add edi, eax
 	rep movsb
-	add bufferSize, SIZEOF totalStr
+	add bufferSize, SIZEOF inTotalStr
+	INVOKE WriteFile, fileHandle, ADDR buffer, bufferSize, ADDR bytesWritten, 0
+	INVOKE WriteFile, fileHandle, ADDR nextLine, nextLineSize, ADDR bytesWritten, 0
+	;outcomeTotal to ascii
+	mov ecx, 50
+	mov bufferSize, 0
+outLoop:
+	xor edx, edx
+	xor eax, eax
+	mov eax, OutTotal
+	.IF eax == 0
+		add eax, 30h
+		mov [buffer+ecx-1], al
+		inc bufferSize
+		jmp outFlag
+	.ENDIF
+	div ten
+	add edx, 30h
+	mov [buffer+ecx-1], dl
+	inc bufferSize
+	.IF eax < 10
+		add al, 30h
+		mov [buffer+ecx-2], al
+		inc bufferSize
+		jmp outFlag
+	.ELSE
+		mov OutTotal, eax
+	.ENDIF
+	loop outLoop
+outFlag:
+	mov ecx, outTotalStrSize
+	mov esi, OFFSET outTotalStr
+	mov edi, OFFSET buffer
+	rep movsb
+	mov ecx, bufferSize
+	mov eax, 50
+	sub eax, bufferSize
+	mov esi, OFFSET buffer
+	add esi, eax
+	mov eax, outTotalStrSize
+	mov edi, OFFSET buffer
+	add edi, eax
+	rep movsb
+	add bufferSize, SIZEOF outTotalStr
+	INVOKE WriteFile, fileHandle, ADDR buffer, bufferSize, ADDR bytesWritten, 0
+	INVOKE WriteFile, fileHandle, ADDR nextLine, nextLineSize, ADDR bytesWritten, 0
+	;balance to ascii
+	mov ecx, 50
+	mov bufferSize, 0
+bLoop:
+	xor edx, edx
+	xor eax, eax
+	mov eax, balance
+	.IF eax == 0
+		add eax, 30h
+		mov [buffer+ecx-1], al
+		inc bufferSize
+		jmp bFlag
+	.ENDIF
+	.IF eax > 80000000h
+		neg eax
+		inc negFlag
+	.ENDIF
+	div ten
+	add edx, 30h
+	mov [buffer+ecx-1], dl
+	inc bufferSize
+	.IF eax < 10
+		add al, 30h
+		mov [buffer+ecx-2], al
+		inc bufferSize
+		.IF negFlag == 1
+			mov [buffer+ecx-3], "-"
+			inc bufferSize
+		.ENDIF
+		jmp bFlag
+	.ELSE
+		mov balance, eax
+	.ENDIF
+	loop bLoop
+bFlag:
+	mov ecx, balanceStrSize
+	mov esi, OFFSET balanceStr
+	mov edi, OFFSET buffer
+	rep movsb
+	mov ecx, bufferSize
+	mov eax, 50
+	sub eax, bufferSize
+	mov esi, OFFSET buffer
+	add esi, eax
+	mov eax, balanceStrSize
+	mov edi, OFFSET buffer
+	add edi, eax
+	rep movsb
+	add bufferSize, SIZEOF balanceStr
 	INVOKE WriteFile, fileHandle, ADDR buffer, bufferSize, ADDR bytesWritten, 0
 	exit
 main ENDP
